@@ -67,12 +67,16 @@ def index():
 @app.route("/filter", methods=['POST'])
 def filter_data():
     
-    stock_info = session_data['stock_info']
-    params = request.form
-    
-    filtered_stock_info = do_filter(params, stock_info)
     model_map = {}
-    model_map['stock_info'] = filtered_stock_info.to_json(orient='records')
+
+    if 'stock_info' in session_data:
+        stock_info = session_data['stock_info']
+        params = request.form
+        filtered_stock_info = do_filter(params, stock_info)
+        model_map['stock_info'] = filtered_stock_info.to_json(orient='records')
+    else:
+        model_map['stock_info'] = {}
+    
     return jsonify(model_map)
 
 def do_filter(params, stock_info):

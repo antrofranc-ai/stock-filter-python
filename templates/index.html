@@ -69,8 +69,12 @@
       url: "/filter",
       data: $('#filterForm').serializeArray(),
       success: function (result) {
-       var dataSet = JSON.parse(result.stock_info);
-       datatable.clear().rows.add(dataSet).draw();
+        if($.isEmptyObject(result.stock_info)) {
+            console.log("Empty filtered data obtained!!!");
+            return;
+        }
+        var dataSet = JSON.parse(result.stock_info);
+        datatable.clear().rows.add(dataSet).draw();
       },
       complete: function(result) {
         $("#loadingContainer").hide();
@@ -99,6 +103,9 @@
      });
      
     });
+
+    // Force click on filter button on startup
+    $("#filterButton").click();
 
    } );
   </script>
