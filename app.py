@@ -37,14 +37,14 @@ def get_prev_close(symbol):
 
 def add_col_prevClose(data):
     data['prevClose'] = np.nan
-    # with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-    #     futures = [executor.submit(get_prev_close, symbol)
-    #                for symbol in data.index.values]
-    #     for future in concurrent.futures.as_completed(futures):
-    #         symbol, prev_close_str = future.result()
-    #         prev_close = float(clean_numeric_data(prev_close_str))
-    #         data.at[symbol, 'prevClose'] = prev_close
-    #         print(symbol, prev_close)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+        futures = [executor.submit(get_prev_close, symbol)
+                   for symbol in data.index.values]
+        for future in concurrent.futures.as_completed(futures):
+            symbol, prev_close_str = future.result()
+            prev_close = float(clean_numeric_data(prev_close_str))
+            data.at[symbol, 'prevClose'] = prev_close
+            print(symbol, prev_close)
 
 def add_col_gapPer(data):
     data['gapPer'] = (data['open'] - data['prevClose']) * 100.0 / data['prevClose']

@@ -62,7 +62,8 @@
     $(".dataTables_filter").appendTo("#searchBtn");
 
     $("#filterButton").click(function(){
-     $('#stockTableContainer').hide()
+     $('#stockTableContainer').hide();
+     $("#loadingContainer").show();
      $.ajax({ 
       type: "POST",
       url: "/filter",
@@ -70,14 +71,18 @@
       success: function (result) {
        var dataSet = JSON.parse(result.stock_info);
        datatable.clear().rows.add(dataSet).draw();
-       $('#stockTableContainer').show();
+      },
+      complete: function(result) {
+        $("#loadingContainer").hide();
+        $('#stockTableContainer').show();
       }
      });
      
     });
     
     $("#updateButton").click(function(){
-     $('#stockTableContainer').hide()
+     $('#stockTableContainer').hide();
+     $("#loadingContainer").show();
      $.ajax({ 
       type: "POST",
       url: "/update_data",
@@ -86,7 +91,10 @@
        var dataSet = JSON.parse(result.stock_info);
        console.log('datatable is ' + datatable);
        datatable.clear().rows.add(dataSet).draw();
-       $('#stockTableContainer').show();
+      },
+      complete: function(result) {
+        $("#loadingContainer").hide();
+        $('#stockTableContainer').show();
       }
      });
      
@@ -129,16 +137,20 @@
                 -->
             <div class="form-group row">
                 <div class="col-sm-1">
-                    <button id="filterButton" class="btn btn-primary">Apply Filter</button>
+                    <button id="filterButton" class="btn btn-primary" type="button">Apply Filter</button>
                 </div>
                 <div class="col-sm-1">
-                    <button id="updateButton" class="btn btn-secondary">Update Data</button>
+                    <button id="updateButton" class="btn btn-secondary" type="button">Update Data</button>
                 </div>
                 <div class="col-sm-10">
                     <span id="searchBtn" class="float-right" />
                 </div>
             </div>
         </form>
+  </div>
+
+  <div id="loadingContainer" style="width:100%;display:none">
+        <img src="https://static.wixstatic.com/media/a9eed7_df9e4b627aba427f94fe8107aeb85403~mv2.gif" alt="loading" height="226" width="320">
   </div>
 
   <div id="stockTableContainer" style="width:100%">
