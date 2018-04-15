@@ -7,6 +7,7 @@ from flask import Flask, jsonify, render_template
 from requests.utils import quote
 import html5lib
 from flask_socketio import SocketIO, send, emit
+import eventlet
 #import gevent
 
 import concurrent.futures
