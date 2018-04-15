@@ -1,7 +1,8 @@
-numpy==1.12.1
-Flask_SocketIO==2.9.6
+html5lib==1.0.1
 Flask==0.12.2
 pandas==0.20.1
 requests==2.14.2
-html5lib==1.0.1
+gevent==1.2.1
+Flask_SocketIO==2.9.6
+numpy==1.12.1
 beautifulsoup4==4.6.0

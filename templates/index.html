@@ -111,7 +111,11 @@
 
     var socket = io.connect('http://' + document.domain + ':' + location.port);
     socket.on('connect', function() {
-        socket.emit('message', {data: 'Client connected successfully'});
+        console.log('Connection established with server:')
+        socket.emit('echo_test', 'Test Echo Payload');
+    });
+    socket.on('echo_test', function(data) {
+        console.log('Echo message received:' + data)
     });
 
    } );

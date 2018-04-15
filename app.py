@@ -6,7 +6,8 @@ from bs4 import BeautifulSoup
 from flask import Flask, jsonify, render_template, request
 from requests.utils import quote
 import html5lib
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, send, emit
+import gevent
 
 import concurrent.futures
 
@@ -162,9 +163,18 @@ def update_data():
 
     return jsonify(model_map)
 
-@socketio.on('message')
+@socketio.on('echo_test')
 def handle_message(message):
-    print('received message: ' + str(message))
+    print('echo_test received, sending back : ' + str(message))
+    emit('echo_test', message)
+
+@socketio.on('filter')
+def handle_filter(params):
+    print('filter: ' + str(params))
+
+@socketio.on('update')
+def handle_update(params):
+    print('update: ' + str(params))
 
 if __name__ == "__main__":
     print('Starting server')
