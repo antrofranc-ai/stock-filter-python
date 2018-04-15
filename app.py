@@ -5,6 +5,8 @@ import requests
 from bs4 import BeautifulSoup
 from flask import Flask, jsonify, render_template, request
 from requests.utils import quote
+import html5lib
+from flask_socketio import SocketIO
 
 import concurrent.futures
 
@@ -20,11 +22,10 @@ import concurrent.futures
 # prevClose
 # gapPer
 
+app = Flask(__name__)
+socketio = SocketIO(app)
 
 session_data = {}
-
-app = Flask(__name__)
-
 
 def get_prev_close(symbol):
     url = 'https://www.nseindia.com/live_market/dynaContent/live_watch/get_quote/GetQuote.jsp?symbol=' + \
@@ -161,6 +162,10 @@ def update_data():
 
     return jsonify(model_map)
 
+@socketio.on('message')
+def handle_message(message):
+    print('received message: ' + str(message))
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8080)
+    print('Starting server')
+    socketio.run(app, host='0.0.0.0', port=8080, use_reloader=True, log_output=True, extra_files=['templates/index.html'])
