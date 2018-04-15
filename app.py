@@ -65,22 +65,6 @@ def get_form_param(key, default_value):
 def index():
     return render_template('index.html')
 
-
-@app.route("/filter", methods=['POST'])
-def filter_data():
-    
-    model_map = {}
-
-    if 'stock_info' in session_data:
-        stock_info = session_data['stock_info']
-        params = request.form
-        filtered_stock_info = do_filter(params, stock_info)
-        model_map['stock_info'] = filtered_stock_info.to_json(orient='records')
-    else:
-        model_map['stock_info'] = {}
-    
-    return jsonify(model_map)
-
 def do_filter(params, stock_info):
 
     mask = None
@@ -114,8 +98,26 @@ def do_filter(params, stock_info):
 
     return stock_info[mask]
 
-@app.route("/update_data", methods=['POST'])
-def update_data():
+@socketio.on('echo_test')
+def handle_message(message):
+    print('echo_test received, sending back : ' + str(message))
+    emit('echo_test', message)
+
+@socketio.on('filter')
+def handle_filter(params):
+    print('Filtering with params:'+str(params))
+    filtered_stock_info_json = ''
+    if 'stock_info' in session_data:
+        stock_info = session_data['stock_info']
+        filtered_stock_info = do_filter(params, stock_info)
+        filtered_stock_info_json = filtered_stock_info.to_json(orient='records')
+    emit('stock_data', filtered_stock_info_json)
+
+@socketio.on('update')
+def handle_update(params):
+
+    print('update with params: ' + str(params))
+
     resp = requests.get(
         'https://www.nseindia.com/live_market/dynaContent/live_watch/stock_watch/foSecStockWatch.json')
     nse_json = resp.json()
@@ -157,25 +159,10 @@ def update_data():
     # Update session data
     session_data['stock_info'] = stock_info
 
-    model_map = {}
-    model_map['stock_info'] = session_data['stock_info'].to_json(
-        orient='records')
-
-    return jsonify(model_map)
-
-@socketio.on('echo_test')
-def handle_message(message):
-    print('echo_test received, sending back : ' + str(message))
-    emit('echo_test', message)
-
-@socketio.on('filter')
-def handle_filter(params):
-    print('filter: ' + str(params))
-
-@socketio.on('update')
-def handle_update(params):
-    print('update: ' + str(params))
+    filtered_stock_info = do_filter(params, stock_info)
+    filtered_stock_info_json = filtered_stock_info.to_json(orient='records')
+    emit('stock_data', filtered_stock_info_json)
 
 if __name__ == "__main__":
     print('Starting server')
-    socketio.run(app, host='0.0.0.0', port=8080, use_reloader=True, log_output=True, extra_files=['templates/index.html'])
+    socketio.run(app, host='0.0.0.0', port=8080, use_reloader=True, extra_files=['templates/index.html'])
