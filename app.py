@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template
 from requests.utils import quote
 import html5lib
 from flask_socketio import SocketIO, send, emit
@@ -55,11 +55,6 @@ def clean_numeric_data(num_txt):
     if num_txt == '-':
         return "0"
     return num_txt.replace(',', '')
-
-def get_form_param(key, default_value):
-    value = request.form[key]
-    return value if value else default_value
-
 
 @app.route("/")
 def index():
