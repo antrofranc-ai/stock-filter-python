@@ -8,7 +8,7 @@ from requests.utils import quote
 import html5lib
 from flask_socketio import SocketIO, send, emit
 import eventlet
-#import gevent
+import traceback
 
 import concurrent.futures
 
@@ -37,17 +37,18 @@ def get_prev_close(symbol):
         id="responseDiv").get_text())['data'][0]['previousClose']
     return (symbol, prev_close)
 
-
-def add_col_prevClose(data):
-    data['prevClose'] = np.nan
-    with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-        futures = [executor.submit(get_prev_close, symbol)
-                   for symbol in data.index.values]
-        for future in concurrent.futures.as_completed(futures):
-            symbol, prev_close_str = future.result()
-            prev_close = float(clean_numeric_data(prev_close_str))
-            data.at[symbol, 'prevClose'] = prev_close
-            print(symbol, prev_close)
+def add_col_prevClose(data, load_static_data):
+    if 'prevClose' not in data:
+        data['prevClose'] = np.nan
+    if load_static_data:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+            futures = [executor.submit(get_prev_close, symbol)
+                    for symbol in data.index.values]
+            for future in concurrent.futures.as_completed(futures):
+                symbol, prev_close_str = future.result()
+                prev_close = float(clean_numeric_data(prev_close_str))
+                data.at[symbol, 'prevClose'] = prev_close
+                print(symbol, prev_close)
 
 def add_col_gapPer(data):
     data['gapPer'] = (data['open'] - data['prevClose']) * 100.0 / data['prevClose']
@@ -92,6 +93,16 @@ def do_filter(params, stock_info):
     elif gap_down_per:
         mask &= gap_down_mask
 
+    # Filter-3 : Open price same as Low Price by x%
+    open_low_same_per = params['open_low_same_per']
+    if open_low_same_per:
+        mask &= (((stock_info['open'] - stock_info['low']) * 100.0) / stock_info['low']) <= float(open_low_same_per)
+
+    # Filter-4 : Open price same as High Price by x%
+    open_high_same_per = params['open_high_same_per']
+    if open_high_same_per:
+        mask &= (((stock_info['high'] - stock_info['open']) * 100.0) / stock_info['high']) <= float(open_high_same_per)
+
     return stock_info[mask]
 
 @socketio.on('echo_test')
@@ -103,17 +114,63 @@ def handle_message(message):
 def handle_filter(params):
     print('Filtering with params:'+str(params))
     filtered_stock_info_json = ''
-    if 'stock_info' in session_data:
-        stock_info = session_data['stock_info']
-        filtered_stock_info = do_filter(params, stock_info)
+
+    try:
+        if 'stock_info' in session_data:
+            stock_info = session_data['stock_info']
+            filtered_stock_info = do_filter(params, stock_info)
+            filtered_stock_info_json = filtered_stock_info.to_json(orient='records')
+        emit('stock_data', filtered_stock_info_json)
+    except Exception as e:
+        error_details = traceback.format_exc()
+        print(error_details)
+        emit('error_data', error_details)
+
+@socketio.on('load_all_data')
+def load_all_data(form_params):
+    print('load_all_data with form_params: ' + str(form_params))
+    update_stock_data(form_params, load_static_data=True)
+
+@socketio.on('refresh_prices')
+def refresh_prices(form_params):
+    print('refresh_prices with form_params: ' + str(form_params))
+    update_stock_data(form_params, load_static_data=False)
+    
+
+def update_stock_data(form_params, load_static_data=False):
+    try:
+
+        new_stock_info = get_nse_fo_data()
+
+        stock_info = None
+        if ('stock_info' not in session_data) or load_static_data:
+            stock_info = new_stock_info
+        else:
+            stock_info = session_data['stock_info']
+            for column in new_stock_info.columns:
+                stock_info[column] = new_stock_info[column]
+        
+        # Add new columns
+        add_col_prevClose(stock_info, load_static_data)
+
+        # Add derived/calculated columns
+        add_col_gapPer(stock_info)
+
+        # Update session data
+        session_data['stock_info'] = stock_info
+
+        # Filter data
+        filtered_stock_info = do_filter(form_params, stock_info)
+
+        # Emit data
         filtered_stock_info_json = filtered_stock_info.to_json(orient='records')
-    emit('stock_data', filtered_stock_info_json)
+        emit('stock_data', filtered_stock_info_json)
+    except Exception as e:
+        error_details = traceback.format_exc()
+        print(error_details)
+        emit('error_data', error_details)
 
-@socketio.on('update')
-def handle_update(params):
-
-    print('update with params: ' + str(params))
-
+def get_nse_fo_data():
     resp = requests.get(
         'https://www.nseindia.com/live_market/dynaContent/live_watch/stock_watch/foSecStockWatch.json')
     nse_json = resp.json()
@@ -122,7 +179,7 @@ def handle_update(params):
     # clean all number columns
     for data_dict in stock_info_list:
         data_dict.update({k: clean_numeric_data(v)
-                          for k, v in data_dict.items()})
+                        for k, v in data_dict.items()})
 
     # Set numeric types for columns
     stock_info = pd.DataFrame.from_dict(nse_json['data']).astype(dtype={
@@ -143,21 +200,8 @@ def handle_update(params):
         "yPC": np.float32,
         "mPC": np.float32
     })
-
     stock_info.set_index('symbol', inplace=True, drop=False)
-
-    # ADD COLUMN : prevClose
-    add_col_prevClose(stock_info)
-
-    # ADD COLUMN : gapPer
-    add_col_gapPer(stock_info)
-
-    # Update session data
-    session_data['stock_info'] = stock_info
-
-    filtered_stock_info = do_filter(params, stock_info)
-    filtered_stock_info_json = filtered_stock_info.to_json(orient='records')
-    emit('stock_data', filtered_stock_info_json)
+    return stock_info
 
 if __name__ == "__main__":
     print('Starting server')

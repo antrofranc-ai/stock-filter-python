@@ -41,24 +41,31 @@
   <script>
    $(document).ready(function() {
 
-    var datatable = $('#stockTable').DataTable( {
-     data: null,
-     columns: [
-      { data: "symbol" },
-      { data: "open" },
-      { data: "high" },
-      { data: "low" },
-      { data: "ltP" },
-      { data: "ptsC" },
-      { data: "per" },
-      { data: "prevClose" },
-      { data: "gapPer" }
-     ],
-     paging: false,
-     colReorder: true,
-     buttons: [
-      'colvis'
-     ]
+    function render_chart_link(data, type, row, meta) {
+        if (type === 'display') {
+            data = '<a target="_blank" href="https://www.eqsis.com/niftychart/?symbol=' + data + '">' + data + '</a>';
+        }
+        return data;
+    }
+
+    var datatable = $('#stockTable').DataTable({
+        data: null,
+        columns: [
+            { data: "symbol", render: render_chart_link},
+            { data: "open", render: $.fn.dataTable.render.number(',', '.', 2, '') },
+            { data: "high", render: $.fn.dataTable.render.number(',', '.', 2, '') },
+            { data: "low", render: $.fn.dataTable.render.number(',', '.', 2, '') },
+            { data: "ltP", render: $.fn.dataTable.render.number(',', '.', 2, '') },
+            { data: "ptsC", render: $.fn.dataTable.render.number(',', '.', 2, '') },
+            { data: "per", render: $.fn.dataTable.render.number(',', '.', 2, '') },
+            { data: "prevClose", render: $.fn.dataTable.render.number(',', '.', 2, '') },
+            { data: "gapPer", render: $.fn.dataTable.render.number(',', '.', 2, '') }
+        ],
+        paging: false,
+        colReorder: true,
+        buttons: [
+            'colvis'
+        ]
     }); // end of DataTable
 
     // Move search input of table
@@ -70,13 +77,19 @@
         $('#stockTableContainer').hide();
         $("#loadingContainer").show();
         socket.emit('filter', $('#filterForm').serializeJSON());
-    }); // end click
+    });
 
-    $("#updateButton").click(function () {
+    $("#refreshPricesButton").click(function () {
         $('#stockTableContainer').hide();
         $("#loadingContainer").show();
-        socket.emit('update', $('#filterForm').serializeJSON());
-    }); // end click
+        socket.emit('refresh_prices', $('#filterForm').serializeJSON());
+    });
+
+    $("#loadAllDataButton").click(function () {
+        $('#stockTableContainer').hide();
+        $("#loadingContainer").show();
+        socket.emit('load_all_data', $('#filterForm').serializeJSON());
+    });
 
     socket.on('connect', function() {
         console.log('Connection established with server:')
@@ -98,6 +111,13 @@
         $("#loadingContainer").hide();
         $('#stockTableContainer').show();
     });
+
+    socket.on('error_data', function (result) {
+        $("#loadingContainer").hide();
+        $('#stockTableContainer').show();
+        alert('Error occurred. Please check logs for details and re-try.');
+        console.log(result);
+    });
     
    } );
   </script>
@@ -111,7 +131,7 @@
 
         <form id="filterForm">
             <div class="form-group row">
-                <label class="col-sm-1 col-form-label">Price Filter</label>
+                <label class="col-sm-2 col-form-label">Price Filter</label>
                 <div class="col-sm-2">
                     <input type="number" min="0" class="form-control" placeholder="Min Price" name="min_price">
                 </div>
@@ -120,7 +140,7 @@
                 </div>
             </div>
             <div class="form-group row">
-                <label class="col-sm-1 col-form-label">Gap Filter</label>
+                <label class="col-sm-2 col-form-label">Gap Filter</label>
                 <div class="col-sm-2">
                     <input type="number" min="0" max="100" class="form-control" placeholder="Gap Up %" name="gap_up_per">
                 </div>
@@ -128,20 +148,23 @@
                     <input type="number" min="0" max="100" class="form-control" placeholder="Gap Down %" name="gap_down_per">
                 </div>
             </div>
-            <!--
-                <div class="row">
-                    Open - Low Same %: <input type="number" name="open_low_same_per">
-                    Open - High Same %: <input type="number" name="open_high_same_per">
-                </div>
-                -->
             <div class="form-group row">
-                <div class="col-sm-1">
+                <label class="col-sm-2 col-form-label">Open Price Same As</label>
+                <div class="col-sm-2">
+                    <input type="number" min="0" max="100" class="form-control" placeholder="Low Price %" name="open_low_same_per">
+                </div>
+                <div class="col-sm-2">
+                    <input type="number" min="0" max="100" class="form-control" placeholder="High Price %" name="open_high_same_per">
+                </div>
+            </div>
+
+            <div class="form-group row">
+                <div class="col-sm-4">
                     <button id="filterButton" class="btn btn-primary" type="button">Apply Filter</button>
+                    <button id="refreshPricesButton" class="btn btn-success" type="button">Refresh Prices</button>
+                    <button id="loadAllDataButton" class="btn btn-danger" type="button">Load All Data</button>
                 </div>
-                <div class="col-sm-1">
-                    <button id="updateButton" class="btn btn-secondary" type="button">Update Data</button>
-                </div>
-                <div class="col-sm-10">
+                <div class="col-sm-8">
                     <span id="searchBtn" class="float-right" />
                 </div>
             </div>
