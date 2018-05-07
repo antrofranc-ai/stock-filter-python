@@ -1,3 +1,4 @@
+import datetime
 import json
 import numpy as np
 import pandas as pd
@@ -60,6 +61,7 @@ def clean_numeric_data(num_txt):
 
 @app.route("/")
 def index():
+	print("%s Home accessed" % (datetime.datetime.now())) 
     return render_template('index.html')
 
 def do_filter(params, stock_info):
@@ -112,7 +114,7 @@ def handle_message(message):
 
 @socketio.on('filter')
 def handle_filter(params):
-    print('Filtering with params:'+str(params))
+    print('%s : Filtering with params: %s' % (datetime.datetime.now(), str(params)) )
     filtered_stock_info_json = ''
 
     try:
@@ -128,14 +130,13 @@ def handle_filter(params):
 
 @socketio.on('load_all_data')
 def load_all_data(form_params):
-    print('load_all_data with form_params: ' + str(form_params))
+    print('%s : load_all_data with form_params: %s' % (datetime.datetime.now(), str(form_params)) )
     update_stock_data(form_params, load_static_data=True)
 
 @socketio.on('refresh_prices')
 def refresh_prices(form_params):
-    print('refresh_prices with form_params: ' + str(form_params))
+    print('%s : refresh_prices with form_params: %s' % (datetime.datetime.now(), str(form_params)) )
     update_stock_data(form_params, load_static_data=False)
-    
 
 def update_stock_data(form_params, load_static_data=False):
     try:
