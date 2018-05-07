@@ -61,7 +61,7 @@ def clean_numeric_data(num_txt):
 
 @app.route("/")
 def index():
-	print("%s Home accessed" % (datetime.datetime.now())) 
+    print("%s Home accessed" % (datetime.datetime.now())) 
     return render_template('index.html')
 
 def do_filter(params, stock_info):
